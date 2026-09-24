@@ -134,3 +134,24 @@ footer{text-align:center;color:var(--dim);font:11px var(--mono);letter-spacing:.
   .btn{flex:1}
   .link{margin-left:12px}
 }
+
+/* nav + articles (guides, terms) */
+.top nav{display:flex;gap:18px}
+a.logo{color:#fff;text-decoration:none}
+.article{max-width:680px;padding-top:56px}
+.article .kicker{font:500 11px var(--mono);color:var(--mute);letter-spacing:.12em;text-transform:uppercase}
+.article h1{font-size:clamp(32px,6vw,46px);line-height:1.05;letter-spacing:-.04em;margin:12px 0 18px}
+.article .lede{color:var(--mute);font-size:18px;margin-bottom:28px}
+.article h2{font-size:21px;letter-spacing:-.02em;margin:36px 0 10px}
+.article p,.article li{color:#cfcfcf;margin-bottom:12px}
+.article ul,.article ol{padding-left:22px;margin-bottom:12px}
+.article a{color:#fff;text-underline-offset:3px}
+.article code{font:13px var(--mono);background:#111;border:1px solid var(--line2);border-radius:6px;padding:1px 6px}
+.article .cta{display:block;border:1px solid var(--line2);border-radius:var(--r);padding:22px;margin:36px 0;text-decoration:none}
+.article .cta b{display:block;color:#fff;font-size:18px;margin-bottom:4px}
+.article .cta span{color:var(--mute)}
+.article .cta:hover{border-color:#fff}
+.guide-list{list-style:none;padding:0!important}
+.guide-list li{border-top:1px solid var(--line2);padding:18px 0;margin:0}
+.guide-list a{text-decoration:none;font-size:18px;font-weight:600}
+.guide-list p{margin:4px 0 0;color:var(--mute)}
