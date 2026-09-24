@@ -7,7 +7,9 @@ const S = {
   file: null, url: null, name: 'video', title: '', duration: 0,
   frames: [], segments: [], plain: '', tsource: '',
   mode: 'interval', tmode: 'auto', busy: false, cancel: false,
+  src: 'file', ytId: null, ytUrl: '', yt: null,
 };
+const hasVideo = () => (S.src === 'yt' ? !!S.ytId : !!S.file);
 const MAX_FRAMES = 400;
 
 /* ---------- small UI helpers ---------- */
@@ -29,6 +31,15 @@ function segmented(id, key, onChange) {
   }));
 }
 segmented('mode', 'mode', v => $$('.opt').forEach(o => o.classList.toggle('hidden', o.dataset.m !== v)));
+segmented('smode', 'src', v => {
+  const yt = v === 'yt';
+  ['#ytSrcRow', '#ytSrcHint'].forEach(s => $(s).classList.toggle('hidden', !yt));
+  $('#ytWrap').classList.toggle('hidden', !yt || !S.ytId);
+  $('#drop').classList.toggle('hidden', yt);
+  $('#videoWrap').classList.toggle('hidden', yt || !S.file);
+  clearFrames(); syncSource();
+});
+function setSeg(id, v) { const b = $(`#${id} button[data-v="${v}"]`); if (b && !b.classList.contains('on')) b.click(); }
 segmented('tmode', 'tmode', v => $$('.topt').forEach(o => o.classList.toggle('hidden', o.dataset.t !== v)));
 
 /* ---------- 01 load video ---------- */
@@ -71,8 +82,120 @@ async function loadFile(f) {
   $('#rangeStart').value = '00:00';
   $('#rangeEnd').value = U.fmt(S.duration);
   $('#folderName').value = S.name;
-  $('#extractBtn').disabled = false; $('#transBtn').disabled = false;
+  syncSource();
+}
+
+// Enable buttons + duration/range for whichever source is active
+function syncSource() {
+  if (S.src === 'yt') {
+    S.duration = S.yt && S.yt.getDuration ? S.yt.getDuration() : 0;
+    if (S.ytId) { $('#rangeStart').value = '00:00'; $('#rangeEnd').value = U.fmt(S.duration); }
+  } else if (S.file) {
+    S.duration = isFinite(video.duration) ? video.duration : 0;
+    $('#rangeStart').value = '00:00'; $('#rangeEnd').value = U.fmt(S.duration);
+  }
+  $('#extractBtn').disabled = !hasVideo();
+  $('#transBtn').disabled = !hasVideo();
   refresh();
+}
+
+/* ---------- 01b YouTube as the video source ---------- */
+function ytIdFrom(u) {
+  u = (u || '').trim();
+  if (/^[\w-]{11}$/.test(u)) return u;
+  try {
+    const x = new URL(u);
+    if (x.hostname.includes('youtu.be')) return x.pathname.slice(1, 12);
+    if (x.searchParams.get('v')) return x.searchParams.get('v');
+    const m = x.pathname.match(/\/(shorts|embed|live|v)\/([\w-]{11})/);
+    if (m) return m[2];
+  } catch (_) {}
+  return null;
+}
+let ytApi;
+function loadYtApi() {
+  if (window.YT && YT.Player) return Promise.resolve();
+  if (ytApi) return ytApi;
+  ytApi = new Promise(res => {
+    window.onYouTubeIframeAPIReady = res;
+    const s = document.createElement('script'); s.src = 'https://www.youtube.com/iframe_api'; document.head.appendChild(s);
+  });
+  return ytApi;
+}
+async function loadYouTube() {
+  const url = $('#ytSrcUrl').value.trim(), id = ytIdFrom(url);
+  if (!id) return toast('That doesn’t look like a YouTube link.');
+  if (S.busy) return;
+  clearFrames();
+  await loadYtApi();
+  if (S.yt) { S.yt.destroy(); S.yt = null; $('#ytWrap').innerHTML = '<div id="ytPlayer"></div>'; }
+  $('#ytWrap').classList.remove('hidden');
+  S.ytId = id; S.ytUrl = 'https://www.youtube.com/watch?v=' + id;
+  await new Promise(res => {
+    S.yt = new YT.Player('ytPlayer', {
+      videoId: id, host: 'https://www.youtube-nocookie.com',
+      playerVars: { controls: 0, disablekb: 1, rel: 0, modestbranding: 1, iv_load_policy: 3, playsinline: 1 },
+      events: { onReady: res },
+    });
+  });
+  // duration is sometimes 0 until the video is cued
+  for (let i = 0; i < 20 && !S.yt.getDuration(); i++) await new Promise(r => setTimeout(r, 150));
+  const d = S.yt.getVideoData ? S.yt.getVideoData() : {};
+  S.title = d.title || 'YouTube video ' + id;
+  $('#folderName').value = U.slug(S.title);
+  syncSource();
+  // transcript: point step 03 at the same video and fetch it
+  $('#ytUrl').value = S.ytUrl; setSeg('tmode', 'yt');
+  if (!S.segments.length && !S.plain) getYouTube();
+  toast('Video loaded. Pick your screenshot settings, then Extract.');
+}
+$('#ytSrcBtn').addEventListener('click', loadYouTube);
+$('#ytSrcUrl').addEventListener('keydown', e => { if (e.key === 'Enter') loadYouTube(); });
+
+// Tab capture: the browser records this tab, we crop to the player
+const cap = { stream: null, vid: null, crop: false };
+async function startCapture() {
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getDisplayMedia)
+    throw new Error('This browser can’t capture the screen. Use Chrome or Edge on a computer, or screen-record the video and upload it.');
+  const frame = $('#ytWrap iframe');
+  frame.scrollIntoView({ block: 'center' });
+  const stream = await navigator.mediaDevices.getDisplayMedia({
+    video: { displaySurface: 'browser', frameRate: 30 }, audio: false,
+    preferCurrentTab: true, selfBrowserSurface: 'include', surfaceSwitching: 'exclude',
+  });
+  const track = stream.getVideoTracks()[0];
+  const surface = track.getSettings().displaySurface;
+  if (surface && surface !== 'browser') { track.stop(); throw new Error('Please choose “This tab” (not a window or the whole screen).'); }
+  cap.crop = false;
+  if (window.CropTarget && track.cropTo) {
+    try { await track.cropTo(await CropTarget.fromElement(frame)); cap.crop = true; } catch (_) {}
+  }
+  const v = document.createElement('video'); v.muted = true; v.playsInline = true; v.srcObject = stream;
+  await v.play();
+  cap.stream = stream; cap.vid = v;
+}
+function stopCapture() {
+  if (cap.stream) cap.stream.getTracks().forEach(t => t.stop());
+  cap.stream = cap.vid = null;
+}
+const nextFrame = v => new Promise(r => v.requestVideoFrameCallback ? v.requestVideoFrameCallback(() => r()) : setTimeout(r, 60));
+async function ytSeek(t) {
+  const p = S.yt;
+  p.seekTo(t, true); p.pauseVideo();
+  for (let i = 0; i < 60; i++) {           // wait until YouTube is really there (≤ ~6s)
+    await new Promise(r => setTimeout(r, 100));
+    const st = p.getPlayerState();
+    if (Math.abs(p.getCurrentTime() - t) < 0.6 && st !== 3) break;
+  }
+  await new Promise(r => setTimeout(r, 250));
+  await nextFrame(cap.vid); await nextFrame(cap.vid);
+}
+// Where the player sits inside the captured frame (only needed without CropTarget)
+function ytRect() {
+  const v = cap.vid;
+  if (cap.crop) return [0, 0, v.videoWidth, v.videoHeight];
+  const r = $('#ytWrap iframe').getBoundingClientRect(), k = v.videoWidth / window.innerWidth;
+  return [r.left * k, r.top * k, r.width * k, r.height * k];
 }
 
 function getRange() {
@@ -89,6 +212,7 @@ const small = document.createElement('canvas'); small.width = 64; small.height =
 const sctx = small.getContext('2d', { willReadFrequently: true });
 
 function seek(t) {
+  if (S.src === 'yt') return ytSeek(t);
   return new Promise(res => {
     let timer;
     const done = () => { clearTimeout(timer); video.removeEventListener('seeked', done); res(); };
@@ -97,15 +221,23 @@ function seek(t) {
     video.currentTime = Math.min(Math.max(0, t), Math.max(0, S.duration - 0.05));
   });
 }
+function drawSrc(ctx, w, h) {
+  if (S.src === 'yt') { const [x, y, rw, rh] = ytRect(); ctx.drawImage(cap.vid, x, y, rw, rh, 0, 0, w, h); }
+  else ctx.drawImage(video, 0, 0, w, h);
+}
+function srcSize() {
+  if (S.src === 'yt') { const r = ytRect(); return [Math.round(r[2]), Math.round(r[3])]; }
+  return [video.videoWidth, video.videoHeight];
+}
 function grab(maxW) {
-  const w = video.videoWidth, h = video.videoHeight;
+  const [w, h] = srcSize();
   const sc = maxW && w > maxW ? maxW / w : 1;
   full.width = Math.round(w * sc); full.height = Math.round(h * sc);
-  full.getContext('2d').drawImage(video, 0, 0, full.width, full.height);
+  drawSrc(full.getContext('2d'), full.width, full.height);
   return new Promise(r => full.toBlob(r, 'image/jpeg', 0.85));
 }
 function signature() {
-  sctx.drawImage(video, 0, 0, 64, 36);
+  drawSrc(sctx, 64, 36);
   const d = sctx.getImageData(0, 0, 64, 36).data, g = new Uint8Array(64 * 36);
   for (let i = 0; i < g.length; i++) g[i] = (d[i * 4] * 0.3 + d[i * 4 + 1] * 0.59 + d[i * 4 + 2] * 0.11) | 0;
   return g;
@@ -119,7 +251,7 @@ async function addFrame(t, maxW) {
 }
 
 async function extract() {
-  if (!S.file || S.busy) return;
+  if (!hasVideo() || S.busy) return;
   const [start, end] = getRange();
   if (end - start < 0.2) return toast('Pick a longer section.');
   const maxW = +$('#maxW').value;
@@ -138,9 +270,10 @@ async function extract() {
   S.busy = true; S.cancel = false;
   $('#extractBtn').disabled = true; $('#cancelBtn').classList.remove('hidden');
   const barEl = $('#frameBar'); bar(barEl, 0);
-  try { await video.play(); video.pause(); } catch (_) { /* iOS warm-up, harmless if it fails */ }
+  if (S.src === 'file') { try { await video.play(); video.pause(); } catch (_) { /* iOS warm-up, harmless if it fails */ } }
 
   try {
+    if (S.src === 'yt') await startCapture();
     if (times) {
       for (let i = 0; i < times.length && !S.cancel; i++) {
         await seek(times[i]); await addFrame(times[i], maxW); bar(barEl, (i + 1) / times.length);
@@ -149,7 +282,7 @@ async function extract() {
       // Smart: sample the video, keep a frame when it differs enough from the last kept one
       const sens = +$('#sens').value;                 // 1..100
       const thr = 30 * (1 - sens / 100) + 2;          // mean pixel diff (0..255)
-      const step = Math.max(0.25, (end - start) / 800);
+      const step = S.src === 'yt' ? Math.max(1.5, (end - start) / 200) : Math.max(0.25, (end - start) / 800);
       const minGap = 0.8, maxGap = 20;
       let last = null, lastT = -1e9;
       for (let t = start + 0.05; t < end && !S.cancel; t += step) {
@@ -163,8 +296,9 @@ async function extract() {
       }
     }
   } catch (e) {
-    toast('Something went wrong: ' + e.message);
+    toast(e.name === 'NotAllowedError' ? 'Screen sharing was cancelled.' : 'Something went wrong: ' + e.message);
   }
+  stopCapture();
   S.busy = false;
   $('#extractBtn').disabled = false; $('#cancelBtn').classList.add('hidden');
   bar(barEl, null);
@@ -211,6 +345,7 @@ function setTranscript(segments, plain, source) {
 
 // Auto: decode audio in the browser → 16 kHz mono → 2-minute WAV chunks → /api/transcribe
 async function transcribe() {
+  if (S.src === 'yt' && S.ytId) { $('#ytUrl').value = S.ytUrl; setSeg('tmode', 'yt'); return getYouTube(); }
   if (!S.file) return toast('Upload a video first.');
   if (S.busy) return;
   S.busy = true; $('#transBtn').disabled = true;
@@ -259,7 +394,7 @@ async function transcribe() {
   } catch (e) {
     tStatus(e.message, true);
   }
-  S.busy = false; $('#transBtn').disabled = !S.file; bar(barEl, null);
+  S.busy = false; $('#transBtn').disabled = !hasVideo(); bar(barEl, null);
 }
 $('#transBtn').addEventListener('click', transcribe);
 
@@ -274,7 +409,7 @@ async function getYouTube() {
     const r = await fetch('/api/youtube?url=' + encodeURIComponent(u) + (lang ? '&lang=' + lang : ''));
     const j = await r.json().catch(() => ({ error: 'Server not reachable (it only works once deployed).' }));
     if (!r.ok || j.error) throw new Error(j.error || 'Couldn’t get captions.');
-    if (j.title) { S.title = j.title; if (!S.file) $('#folderName').value = U.slug(j.title); }
+    if (j.title) { S.title = j.title; if (!hasVideo()) $('#folderName').value = U.slug(j.title); }
     setTranscript(j.segments, '', 'YouTube captions' + (j.auto ? ' (auto-generated)' : ''));
   } catch (e) {
     tStatus(e.message + ' → Open the video on YouTube, “Show transcript”, copy it, and use Paste / upload.', true);
@@ -353,7 +488,7 @@ async function exportZip() {
     const notes = $('#notes').value.trim();
 
     files.unshift({ path: `${folder}/README_for_AI.md`, data: U.buildReadme({
-      title: S.title || folder, fileName: S.file && S.file.name, duration: S.duration, start, end,
+      title: S.title || folder, fileName: S.src === 'yt' ? S.ytUrl : (S.file && S.file.name), duration: S.duration, start, end,
       frames, groups, segments: S.segments, plain: S.plain, notes,
       transcriptSource: S.tsource, sheets: wantSheets, hasTranscript,
     }) });

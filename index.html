@@ -28,6 +28,16 @@
   <!-- 01 VIDEO -->
   <section class="card">
     <div class="step"><span>01</span>Video</div>
+    <div class="seg" id="smode">
+      <button data-v="file" class="on">Upload file</button>
+      <button data-v="yt">YouTube link</button>
+    </div>
+    <div class="row hidden" id="ytSrcRow" style="margin-top:0">
+      <input id="ytSrcUrl" class="grow" placeholder="https://youtube.com/watch?v=…">
+      <button class="btn" id="ytSrcBtn">Load video</button>
+    </div>
+    <p class="hint hidden" id="ytSrcHint">Works on a computer (Chrome or Edge). When you extract, your browser asks to share this tab: pick <b>this tab</b>. On a phone, screen-record the video and upload the recording instead.</p>
+    <div id="ytWrap" class="hidden"><div id="ytPlayer"></div></div>
     <label class="drop" id="drop">
       <input type="file" id="file" accept="video/*" hidden>
       <strong>Drop a video</strong>
