@@ -1,0 +1,9 @@
+{
+  "name": "unreel",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Video in, folder out — screenshots + transcript for any AI.",
+  "scripts": { "dev": "vercel dev" },
+  "engines": { "node": ">=18" }
+}

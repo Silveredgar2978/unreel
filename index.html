@@ -1,0 +1,185 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Unreel — video in, folder out</title>
+<meta name="description" content="Turn any video into screenshots + a full transcript, packed in one folder your AI can read.">
+<meta name="theme-color" content="#000000">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23000'/%3E%3Ccircle cx='16' cy='16' r='7' fill='none' stroke='%23fff' stroke-width='3'/%3E%3Ccircle cx='16' cy='16' r='2' fill='%23fff'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<header class="top">
+  <div class="logo"><i></i>UNREEL</div>
+  <a href="#how">How it works</a>
+</header>
+
+<main>
+  <section class="hero">
+    <h1>Video in.<br><span data-text="Folder out.">Folder out.</span></h1>
+    <p>Turn any video into screenshots + the full transcript, packed in one folder your AI can actually read.</p>
+  </section>
+
+  <!-- 01 VIDEO -->
+  <section class="card">
+    <div class="step"><span>01</span>Video</div>
+    <label class="drop" id="drop">
+      <input type="file" id="file" accept="video/*" hidden>
+      <strong>Drop a video</strong>
+      <span>or tap to choose one from your camera roll</span>
+    </label>
+    <div id="videoWrap" class="hidden">
+      <video id="video" playsinline muted preload="auto" controls></video>
+      <div class="meta" id="videoMeta"></div>
+    </div>
+  </section>
+
+  <!-- 02 SCREENSHOTS -->
+  <section class="card">
+    <div class="step"><span>02</span>Screenshots</div>
+    <div class="seg" id="mode">
+      <button data-v="interval" class="on">Every X sec</button>
+      <button data-v="count">Exact count</button>
+      <button data-v="smart">Smart</button>
+    </div>
+
+    <div class="opt" data-m="interval">
+      <label>One screenshot every <input type="number" id="interval" value="3" min="0.2" step="0.5"> seconds</label>
+    </div>
+    <div class="opt hidden" data-m="count">
+      <label><input type="number" id="count" value="20" min="1" max="500"> screenshots, spread evenly</label>
+    </div>
+    <div class="opt hidden" data-m="smart">
+      <label>Sensitivity <input type="range" id="sens" min="1" max="100" value="50"></label>
+      <p class="hint">Only takes a screenshot when the picture changes. Higher = more screenshots.</p>
+    </div>
+
+    <div class="row">
+      <label class="field">From<input id="rangeStart" value="00:00" inputmode="numeric"></label>
+      <label class="field">To<input id="rangeEnd" value="00:00" inputmode="numeric"></label>
+      <label class="field">Size
+        <select id="maxW">
+          <option value="768">768px (lighter)</option>
+          <option value="1280" selected>1280px</option>
+          <option value="1920">1920px</option>
+          <option value="0">Original</option>
+        </select>
+      </label>
+    </div>
+
+    <div class="actions">
+      <button class="btn" id="extractBtn" disabled>Extract screenshots</button>
+      <button class="btn ghost hidden" id="cancelBtn">Stop</button>
+    </div>
+    <div class="bar hidden" id="frameBar"><i></i></div>
+
+    <div class="gridhead hidden" id="gridHead">
+      <span id="frameCount"></span>
+      <div><button class="link" id="allOn">Select all</button><button class="link" id="allOff">None</button></div>
+    </div>
+    <div class="grid" id="grid"></div>
+  </section>
+
+  <div class="ad hidden" data-slot="mid"><small>ADVERTISEMENT</small></div>
+
+  <!-- 03 TRANSCRIPT -->
+  <section class="card">
+    <div class="step"><span>03</span>Transcript</div>
+    <div class="seg" id="tmode">
+      <button data-v="auto" class="on">Auto (AI)</button>
+      <button data-v="yt">YouTube link</button>
+      <button data-v="paste">Paste / upload</button>
+    </div>
+
+    <div class="topt" data-t="auto">
+      <p class="hint">Listens to the video's audio and writes down every word, with timestamps.</p>
+      <div class="row">
+        <label class="field">Language
+          <select id="lang">
+            <option value="">Auto-detect</option>
+            <option value="es">Español</option>
+            <option value="en">English</option>
+            <option value="pt">Português</option>
+            <option value="fr">Français</option>
+            <option value="de">Deutsch</option>
+            <option value="it">Italiano</option>
+            <option value="ja">日本語</option>
+          </select>
+        </label>
+      </div>
+      <details>
+        <summary>Advanced</summary>
+        <label class="field">Your own Groq API key (optional)<input id="groqKey" type="password" placeholder="gsk_…" autocomplete="off"></label>
+      </details>
+      <div class="actions"><button class="btn" id="transBtn" disabled>Transcribe audio</button></div>
+    </div>
+
+    <div class="topt hidden" data-t="yt">
+      <div class="row">
+        <input id="ytUrl" class="grow" placeholder="https://youtube.com/watch?v=…">
+        <button class="btn" id="ytBtn">Get transcript</button>
+      </div>
+      <p class="hint">Pulls the captions straight from YouTube. For screenshots, also upload the video file in step 01.</p>
+    </div>
+
+    <div class="topt hidden" data-t="paste">
+      <textarea id="pasteBox" rows="7" placeholder="Paste any transcript. Timestamps like 0:12, [00:12], .srt or .vtt are detected automatically."></textarea>
+      <div class="actions">
+        <label class="btn ghost">Upload .txt / .srt / .vtt<input type="file" id="tFile" accept=".txt,.srt,.vtt,text/plain" hidden></label>
+        <button class="btn" id="pasteBtn">Use this transcript</button>
+      </div>
+    </div>
+
+    <div class="bar hidden" id="transBar"><i></i></div>
+    <div class="status" id="transStatus"></div>
+    <div class="tview hidden" id="tview"></div>
+  </section>
+
+  <!-- 04 EXPORT -->
+  <section class="card">
+    <div class="step"><span>04</span>Export</div>
+    <label class="field">Folder name<input id="folderName" value="video"></label>
+    <label class="field">What should the AI know? (optional)
+      <textarea id="notes" rows="3" placeholder="e.g. This is my golf swing — tell me what I'm doing wrong."></textarea>
+    </label>
+    <label class="check"><input type="checkbox" id="sheets" checked> Also make contact sheets (grids of screenshots = fewer uploads)</label>
+    <div class="summary" id="summary">Nothing yet.</div>
+    <div class="actions">
+      <button class="btn big" id="zipBtn" disabled>Download folder (.zip)</button>
+      <button class="btn ghost" id="copyBtn">Copy prompt for AI</button>
+    </div>
+  </section>
+
+  <div class="ad hidden" data-slot="bottom"><small>ADVERTISEMENT</small></div>
+
+  <section class="how" id="how">
+    <div><b>1. Drop a video</b><p>From your camera roll, a screen recording, anything.</p></div>
+    <div><b>2. Pick how to split it</b><p>Every few seconds, an exact count, or smart mode that follows scene changes.</p></div>
+    <div><b>3. Hand the folder to any AI</b><p>Screenshots + transcript + a README that tells the AI what's happening at each moment.</p></div>
+    <div><b>Private by default</b><p>Screenshots are made on your device. Your video is never uploaded — only audio, and only if you use Auto transcript.</p></div>
+  </section>
+</main>
+
+<footer>UNREEL · video in, folder out · <a href="privacy.html">Privacy</a></footer>
+<div class="toast" id="toast"></div>
+
+<script>
+/* ===== ADS (Google AdSense) =====
+   1. Paste your publisher ID below, e.g. "ca-pub-1234567890123456"
+   2. Paste the slot IDs of the ad units you create in AdSense
+   Leave client empty and no ads are shown. */
+window.UNREEL_ADS = {
+  client: "",
+  slots: { mid: "", bottom: "" }
+};
+</script>
+<script src="ads.js"></script>
+<script src="lib.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
