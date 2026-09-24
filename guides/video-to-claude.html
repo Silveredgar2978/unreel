@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#000000">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23000'/%3E%3Ccircle cx='16' cy='16' r='7' fill='none' stroke='%23fff' stroke-width='3'/%3E%3Ccircle cx='16' cy='16' r='2' fill='%23fff'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/style.css">
+<meta name="google-adsense-account" content="ca-pub-1134238138616567">
+<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-1134238138616567" crossorigin="anonymous"></script>
+<script>window.va = window.va || function () { (window.vaq = window.vaq || []).push(arguments); };</script>
+<script defer src="/_vercel/insights/script.js"></script>
+<title>How to give a video to Claude · Unreel</title>
+<meta name="description" content="Claude doesn’t accept video files, but it reads images and text very well. Here’s how to turn any video into something Claude understands.">
+<link rel="canonical" href="https://www.useunreel.com/guides/video-to-claude.html">
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="Unreel">
+<meta property="og:title" content="How to give a video to Claude · Unreel">
+<meta property="og:description" content="Claude doesn’t accept video files, but it reads images and text very well. Here’s how to turn any video into something Claude understands.">
+<meta property="og:url" content="https://www.useunreel.com/guides/video-to-claude.html">
+<meta property="og:image" content="https://www.useunreel.com/og.png">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="https://www.useunreel.com/og.png">
+</head>
+<body>
+<header class="top">
+  <a class="logo" href="/"><i></i>UNREEL</a>
+  <nav><a href="/guides/">Guides</a><a href="/">Open the tool</a></nav>
+</header>
+<main class="article">
+<div class="kicker">Guide</div>
+<h1>How to give a video to Claude</h1>
+<p class="lede">If you try to attach a video to Claude, it won’t work: Claude accepts documents and images, not video files. The good news is that Claude is excellent at reading screenshots and transcripts, and that’s all a video really is.</p>
+
+<h2>What Claude can read</h2>
+<p>Claude handles PDFs, text files and images (JPEG, PNG, GIF, WebP). So the goal is to turn your video into <b>images</b> (what you see) and <b>text</b> (what’s said), and to tell Claude how they fit together.</p>
+
+<h2>Step by step</h2>
+<ol>
+  <li><b>Pick the moments that matter.</b> For a screen recording, a screenshot every 2–5 seconds works well. For a talk, only take one when the slide or scene changes.</li>
+  <li><b>Transcribe the audio with timestamps.</b></li>
+  <li><b>Write a short index</b> like “Screenshot 3 (0:15): the speaker says…”. This is what lets Claude connect the picture to the words.</li>
+  <li><b>Attach everything to one message</b> and ask your question.</li>
+</ol>
+
+<h2>The fast way</h2>
+<p><a href="/">Unreel</a> builds that whole package for you in the browser. Drop in a video (or paste a YouTube link), pick how to split it, and download a folder with:</p>
+<ul>
+  <li><code>frames/</code>: the screenshots, named with their timestamps</li>
+  <li><code>sheets/</code>: grids of 9 screenshots each, so you upload fewer images</li>
+  <li><code>transcript.txt</code>: every word, with timestamps</li>
+  <li><code>README_for_AI.md</code>: the index that matches each screenshot to what’s being said</li>
+</ul>
+<p>Attach the README and the images (or the contact sheets) to Claude and start with: <i>“Read README_for_AI.md first.”</i></p>
+
+<h2>Good things to ask</h2>
+<ul>
+  <li>“Turn this tutorial into a numbered checklist.”</li>
+  <li>“What are the three main arguments in this talk, with timestamps?”</li>
+  <li>“Look at screenshots 4–9. What changes in my form between them?”</li>
+</ul>
+<a class="cta" href="/"><b>Try Unreel, free →</b><span>Drop a video or paste a YouTube link. Get screenshots + the full transcript in one folder your AI can read.</span></a>
+</main>
+<footer>UNREEL · video in, folder out · <a href="/guides/">Guides</a> · <a href="/privacy.html">Privacy</a> · <a href="/terms.html">Terms</a></footer>
+</body>
+</html>
